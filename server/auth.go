@@ -3,9 +3,9 @@ package server
 import (
 	"encoding/json"
 	"net/http"
-	"os"
 	"time"
 
+	"final_sprint/config"
 	"github.com/dgrijalva/jwt-go"
 )
 
@@ -28,7 +28,7 @@ func SignInHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	expectedPassword := os.Getenv("TODO_PASSWORD")
+	expectedPassword := config.Config["TODO_PASSWORD"]
 	if creds.Password != expectedPassword {
 		http.Error(w, "Неверный пароль", http.StatusUnauthorized)
 		return
@@ -56,4 +56,5 @@ func SignInHandler(w http.ResponseWriter, r *http.Request) {
 	})
 
 	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
+
 }

@@ -7,6 +7,13 @@ import (
 	"strconv"
 )
 
+var Config map[string]string
+
+func InitConfig() {
+	Config = make(map[string]string)
+	Config["TODO_PASSWORD"] = os.Getenv("TODO_PASSWORD")
+}
+
 func GetPort() int {
 	port := 7540
 	envPort := os.Getenv("TODO_PORT")

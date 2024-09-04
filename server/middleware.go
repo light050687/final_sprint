@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func auth(next http.HandlerFunc) http.HandlerFunc {
+func Auth(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		c, err := r.Cookie("token")
 		if err != nil {

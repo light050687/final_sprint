@@ -3,6 +3,11 @@ FROM golang:1.22 AS builder
 
 WORKDIR /app
 
+# Устанавливаем переменные окружения для сборки
+ENV CGO_ENABLED=0
+ENV GOOS=linux
+ENV GOARCH=amd64
+
 # Копируем go.mod и go.sum для установки зависимостей
 COPY go.mod go.sum ./
 
@@ -13,16 +18,16 @@ RUN go mod download
 COPY . .
 
 # Сборка приложения
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o /todo_scheduler
+RUN go build -o /app/todo_scheduler
 
-# Используем образ с нужной версией GLIBC для запуска приложения
-FROM ubuntu:latest
+# Используем легкий образ Alpine для запуска приложения
+FROM alpine:latest
 
 # Устанавливаем рабочую директорию внутри контейнера
 WORKDIR /app
 
 # Копируем собранное приложение и необходимые файлы
-COPY --from=builder /todo_scheduler .
+COPY --from=builder /app/todo_scheduler .
 COPY --from=builder /app/web ./web
 
 # Указываем порт, который будет использоваться приложением
