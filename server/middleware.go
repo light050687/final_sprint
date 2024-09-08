@@ -1,9 +1,10 @@
 package server
 
 import (
-	"github.com/dgrijalva/jwt-go"
 	"net/http"
 	"time"
+
+	"github.com/dgrijalva/jwt-go"
 )
 
 func Auth(next http.HandlerFunc) http.HandlerFunc {

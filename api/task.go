@@ -3,12 +3,11 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
-	"final_sprint/utils"
 	"net/http"
 	"time"
-)
 
-const DateFormat = "20060102"
+	"final_sprint/scheduler"
+)
 
 type Task struct {
 	ID      string `json:"id"`
@@ -41,32 +40,32 @@ func (h *TaskHandler) HandleAddTask(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now()
 	if task.Date == "" {
-		task.Date = now.Format(DateFormat)
+		task.Date = now.Format(scheduler.DateFormat)
 	}
 
-	date, err := time.Parse(DateFormat, task.Date)
+	date, err := time.Parse(scheduler.DateFormat, task.Date)
 	if err != nil {
 		http.Error(w, `{"error":"Дата представлена в неправильном формате"}`, http.StatusBadRequest)
 		return
 	}
 
-	if task.Date < now.Format(DateFormat) && task.Repeat == "" {
-		task.Date = now.Format(DateFormat)
+	if task.Date < now.Format(scheduler.DateFormat) && task.Repeat == "" {
+		task.Date = now.Format(scheduler.DateFormat)
 	}
 
 	if !date.After(now) {
-		if task.Repeat == "" || date.Format(DateFormat) == now.Format(DateFormat) {
-			task.Date = now.Format(DateFormat)
+		if task.Repeat == "" || date.Format(scheduler.DateFormat) == now.Format(scheduler.DateFormat) {
+			task.Date = now.Format(scheduler.DateFormat)
 		} else {
-			nextDate, err := utils.NextDate(now, task.Date, task.Repeat)
+			nextDate, err := scheduler.NextDate(now, task.Date, task.Repeat)
 			if err != nil {
 				http.Error(w, `{"error":"Неправильный формат правила повторения"}`, http.StatusBadRequest)
 				return
 			}
 			task.Date = nextDate
 		}
-	} else if task.Repeat != "" && date.Format(DateFormat) == now.Format(DateFormat) {
-		nextDate, err := utils.NextDate(now, task.Date, task.Repeat)
+	} else if task.Repeat != "" && date.Format(scheduler.DateFormat) == now.Format(scheduler.DateFormat) {
+		nextDate, err := scheduler.NextDate(now, task.Date, task.Repeat)
 		if err != nil {
 			http.Error(w, `{"error":"Неправильный формат правила повторения"}`, http.StatusBadRequest)
 			return
@@ -133,10 +132,10 @@ func (h *TaskHandler) HandleUpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	now := time.Now()
 	if task.Date == "" {
-		task.Date = now.Format(DateFormat)
+		task.Date = now.Format(scheduler.DateFormat)
 	}
 
-	date, err := time.Parse(DateFormat, task.Date)
+	date, err := time.Parse(scheduler.DateFormat, task.Date)
 	if err != nil {
 		http.Error(w, `{"error":"Дата представлена в неправильном формате"}`, http.StatusBadRequest)
 		return
@@ -144,17 +143,17 @@ func (h *TaskHandler) HandleUpdateTask(w http.ResponseWriter, r *http.Request) {
 
 	if !date.After(now) {
 		if task.Repeat == "" {
-			task.Date = now.Format(DateFormat)
+			task.Date = now.Format(scheduler.DateFormat)
 		} else {
-			nextDate, err := utils.NextDate(now, task.Date, task.Repeat)
+			nextDate, err := scheduler.NextDate(now, task.Date, task.Repeat)
 			if err != nil {
 				http.Error(w, `{"error":"Неправильный формат правила повторения"}`, http.StatusBadRequest)
 				return
 			}
 			task.Date = nextDate
 		}
-	} else if task.Repeat != "" && date.Format(DateFormat) == now.Format(DateFormat) {
-		nextDate, err := utils.NextDate(now, task.Date, task.Repeat)
+	} else if task.Repeat != "" && date.Format(scheduler.DateFormat) == now.Format(scheduler.DateFormat) {
+		nextDate, err := scheduler.NextDate(now, task.Date, task.Repeat)
 		if err != nil {
 			http.Error(w, `{"error":"Неправильный формат правила повторения"}`, http.StatusBadRequest)
 			return

@@ -1,4 +1,4 @@
-package utils
+package scheduler
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 
 const (
 	year               = 1
-	dateFormat         = "20060102"
+	DateFormat         = "20060102"
 	sundayEU           = 0
 	sundayRus          = 7
 	lastDayOfMonth     = -1
@@ -25,7 +25,7 @@ func NextDate(now time.Time, dateStr, repeat string) (string, error) {
 	if repeat == "" {
 		return "", fmt.Errorf("повторение обязательно")
 	}
-	date, err := time.Parse(dateFormat, dateStr)
+	date, err := time.Parse(DateFormat, dateStr)
 	if err != nil {
 		return "", nil
 	}
@@ -65,7 +65,7 @@ func NextDate(now time.Time, dateStr, repeat string) (string, error) {
 		return "", fmt.Errorf("недопустимый символ повторения")
 	}
 
-	return date.Format(dateFormat), nil
+	return date.Format(DateFormat), nil
 }
 
 func nextDayValue(num string) (int, error) {

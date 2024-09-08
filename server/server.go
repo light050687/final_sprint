@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"final_sprint/api"
-	"final_sprint/config"
-	"final_sprint/utils"
-
 	_ "modernc.org/sqlite"
+
+	"final_sprint/api"
+	"final_sprint/database"
+	"final_sprint/scheduler"
 )
 
 const limit = 50
@@ -33,13 +33,13 @@ func NextDateHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	now, err := time.Parse("20060102", nowStr)
+	now, err := time.Parse(scheduler.DateFormat, nowStr)
 	if err != nil {
 		http.Error(w, `{"error":"Неправильный формат текущей даты"}`, http.StatusBadRequest)
 		return
 	}
 
-	nextDate, err := utils.NextDate(now, dateStr, repeat)
+	nextDate, err := scheduler.NextDate(now, dateStr, repeat)
 	if err != nil {
 		http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
 		return
@@ -51,25 +51,19 @@ func NextDateHandler(w http.ResponseWriter, r *http.Request) {
 
 func TasksHandler(w http.ResponseWriter, r *http.Request) {
 	search := r.URL.Query().Get("search")
-	dbFile := config.GetDBFile()
-	db, err := sql.Open("sqlite", dbFile)
-	if err != nil {
-		http.Error(w, `{"error":"Ошибка подключения к базе данных"}`, http.StatusInternalServerError)
-		return
-	}
-	defer db.Close()
 
 	var rows *sql.Rows
+	var err error
 	if search == "" {
-		rows, err = db.Query(`SELECT id, date, title, comment, repeat FROM scheduler ORDER BY date LIMIT 50`)
+		rows, err = database.GetDB().Query(`SELECT id, date, title, comment, repeat FROM scheduler ORDER BY date LIMIT 50`)
 	} else {
 		search = strings.TrimSpace(search)
 		if date, err := time.Parse("02.01.2006", search); err == nil {
 			// Search is a date
-			rows, err = db.Query(`SELECT id, date, title, comment, repeat FROM scheduler WHERE date = ? ORDER BY date LIMIT 50`, date.Format("20060102"))
+			rows, err = database.GetDB().Query(`SELECT id, date, title, comment, repeat FROM scheduler WHERE date = ? ORDER BY date LIMIT 50`, date.Format(scheduler.DateFormat))
 		} else {
 			search = "%" + strings.ToLower(strings.TrimSpace(search)) + "%"
-			rows, err = db.Query(`SELECT id, date, title, comment, repeat FROM scheduler WHERE title LIKE ? OR comment LIKE ? ORDER BY date LIMIT ? COLLATE NOCASE`, search, search, limit)
+			rows, err = database.GetDB().Query(`SELECT id, date, title, comment, repeat FROM scheduler WHERE title LIKE ? OR comment LIKE ? ORDER BY date LIMIT ? COLLATE NOCASE`, search, search, limit)
 		}
 	}
 	if err != nil {
@@ -109,16 +103,8 @@ func handleTaskDone(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	dbFile := config.GetDBFile()
-	db, err := sql.Open("sqlite", dbFile)
-	if err != nil {
-		http.Error(w, `{"error":"Ошибка подключения к базе данных"}`, http.StatusInternalServerError)
-		return
-	}
-	defer db.Close()
-
 	var task api.Task
-	err = db.QueryRow(`SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?`, id).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	err := database.GetDB().QueryRow(`SELECT id, date, title, comment, repeat FROM scheduler WHERE id = ?`, id).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			http.Error(w, `{"error":"Задача не найдена"}`, http.StatusNotFound)
@@ -129,19 +115,19 @@ func handleTaskDone(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if task.Repeat == "" {
-		_, err = db.Exec(`DELETE FROM scheduler WHERE id = ?`, id)
+		_, err = database.GetDB().Exec(`DELETE FROM scheduler WHERE id = ?`, id)
 		if err != nil {
 			http.Error(w, `{"error":"Ошибка удаления из базы данных"}`, http.StatusInternalServerError)
 			return
 		}
 	} else {
 		now := time.Now()
-		nextDate, err := utils.NextDate(now, task.Date, task.Repeat)
+		nextDate, err := scheduler.NextDate(now, task.Date, task.Repeat)
 		if err != nil {
 			http.Error(w, `{"error":"`+err.Error()+`"}`, http.StatusBadRequest)
 			return
 		}
-		_, err = db.Exec(`UPDATE scheduler SET date = ? WHERE id = ?`, nextDate, id)
+		_, err = database.GetDB().Exec(`UPDATE scheduler SET date = ? WHERE id = ?`, nextDate, id)
 		if err != nil {
 			http.Error(w, `{"error":"Ошибка обновления базы данных"}`, http.StatusInternalServerError)
 			return
@@ -157,22 +143,14 @@ func StartServer(port int) {
 	http.Handle("/", http.FileServer(http.Dir(webDir)))
 	http.HandleFunc("/api/signin", SignInHandler)
 	http.HandleFunc("/api/nextdate", NextDateHandler)
-
-	// Создание экземпляра TaskHandler
-	dbFile := config.GetDBFile()
-	db, err := sql.Open("sqlite", dbFile)
-	if err != nil {
-		log.Fatalf("Ошибка подключения к базе данных: %v", err)
-	}
-	defer db.Close()
-
-	taskHandler := api.NewTaskHandler(db)
-	http.HandleFunc("/api/task", taskHandler.TaskHandler)
 	http.HandleFunc("/api/tasks", TasksHandler)
 	http.HandleFunc("/api/task/done", handleTaskDone)
 
+	taskHandler := api.NewTaskHandler(database.GetDB())
+	http.HandleFunc("/api/task", taskHandler.TaskHandler)
+
 	log.Printf("Сервер запущен на порту %d", port)
-	err = http.ListenAndServe(":"+strconv.Itoa(port), nil)
+	err := http.ListenAndServe(":"+strconv.Itoa(port), nil)
 	if err != nil {
 		log.Fatalf("Ошибка запуска сервера: %v", err)
 	}

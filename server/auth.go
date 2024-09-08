@@ -5,8 +5,9 @@ import (
 	"net/http"
 	"time"
 
-	"final_sprint/config"
 	"github.com/dgrijalva/jwt-go"
+
+	"final_sprint/config"
 )
 
 var jwtKey = []byte("your_secret_key")

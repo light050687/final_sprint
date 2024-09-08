@@ -3,14 +3,15 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"final_sprint/api"
-	"final_sprint/config"
-	"final_sprint/database"
-	"final_sprint/server"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	"final_sprint/api"
+	"final_sprint/config"
+	"final_sprint/database"
+	"final_sprint/server"
 )
 
 func getToken(password string) (string, error) {
